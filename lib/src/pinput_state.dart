@@ -35,7 +35,7 @@ class _PinputState extends State<Pinput>
   String? _validatorErrorText;
   SmsRetriever? _smsRetriever;
 
-  String? get _errorText => widget.errorText ?? _validatorErrorText;
+  String? get _error => _validatorErrorText ?? widget.errorText;
 
   bool get _canRequestFocus {
     final NavigationMode mode = MediaQuery.maybeOf(context)?.navigationMode ??
@@ -56,7 +56,7 @@ class _PinputState extends State<Pinput>
       widget.focusNode ?? (_focusNode ??= FocusNode());
 
   @protected
-  bool get hasError => widget.forceErrorState || _validatorErrorText != null;
+  bool get hasError => widget.forceErrorState || _error != null;
 
   @protected
   bool get isEnabled => widget.enabled;
@@ -109,27 +109,38 @@ class _PinputState extends State<Pinput>
     }
   }
 
+  bool get textChanged =>
+      _recentControllerValue.text != _effectiveController.value.text;
+
   void _handleTextEditingControllerChanges() {
-    final textChanged =
-        _recentControllerValue.text != _effectiveController.value.text;
-    _recentControllerValue = _effectiveController.value;
     if (textChanged) {
       _onChanged(pin);
     }
+    _recentControllerValue = _effectiveController.value;
   }
 
   void _onChanged(String pin) {
     widget.onChanged?.call(pin);
+    _maybeValidateForm();
     if (_completed) {
       widget.onCompleted?.call(pin);
-      _maybeValidateForm();
       _maybeCloseKeyboard();
     }
   }
 
   void _maybeValidateForm() {
-    if (widget.pinputAutovalidateMode == PinputAutovalidateMode.onSubmit) {
-      _validator();
+    switch (widget.autovalidateMode) {
+      case AutovalidateMode.always:
+        _validator();
+        break;
+      case AutovalidateMode.onUserInteraction:
+        if (textChanged) {
+          _validator();
+        }
+        break;
+      case AutovalidateMode.onUnfocus:
+      case AutovalidateMode.disabled:
+        break;
     }
   }
 
@@ -470,12 +481,12 @@ class _PinputState extends State<Pinput>
       return PinItemStateType.disabled;
     }
 
-    if (showErrorState) {
-      return PinItemStateType.error;
-    }
-
     if (hasFocus && index == selectedIndex.clamp(0, widget.length - 1)) {
       return PinItemStateType.focused;
+    }
+
+    if (showErrorState) {
+      return PinItemStateType.error;
     }
 
     if (index < selectedIndex) {
@@ -542,20 +553,20 @@ class _PinputState extends State<Pinput>
   }
 
   @protected
-  bool get showErrorState => hasError && (!hasFocus || widget.forceErrorState);
+  bool get showErrorState => hasError || widget.forceErrorState;
 
   Widget _buildError() {
     if (showErrorState) {
       if (widget.errorBuilder != null) {
-        return widget.errorBuilder!.call(_errorText, pin);
+        return widget.errorBuilder!.call(_error, pin);
       }
 
       final theme = Theme.of(context);
-      if (_errorText != null) {
+      if (_error != null) {
         return Padding(
           padding: const EdgeInsetsDirectional.only(start: 4, top: 8),
           child: Text(
-            _errorText!,
+            _error!,
             style: widget.errorTextStyle ??
                 theme.textTheme.titleMedium
                     ?.copyWith(color: theme.colorScheme.error),
