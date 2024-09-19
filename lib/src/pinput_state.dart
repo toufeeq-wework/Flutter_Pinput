@@ -564,7 +564,7 @@ class _PinputState extends State<Pinput>
       final theme = Theme.of(context);
       if (_error != null) {
         return Padding(
-          padding: const EdgeInsetsDirectional.only(start: 4, top: 8),
+          padding: const EdgeInsetsDirectional.only(top: 8),
           child: Text(
             _error!,
             style: widget.errorTextStyle ??
